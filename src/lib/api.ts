@@ -39,19 +39,26 @@ export interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined | null>;
 }
 
+/**
+ * API_URL is either an absolute origin (the backend, called directly) or a
+ * same-site path such as `/api` (proxied; see next.config.ts), so this
+ * joins strings rather than relying on `new URL`, which needs an absolute
+ * base.
+ */
 function buildUrl(path: string, query?: RequestOptions['query']): string {
-  const url = new URL(
-    path.startsWith('/') ? path.slice(1) : path,
-    API_URL.endsWith('/') ? API_URL : `${API_URL}/`,
-  );
+  const base = API_URL.replace(/\/+$/, '');
+  const url = `${base}/${path.replace(/^\/+/, '')}`;
+
+  const params = new URLSearchParams();
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined && value !== null) {
-        url.searchParams.set(key, String(value));
+        params.set(key, String(value));
       }
     }
   }
-  return url.toString();
+  const search = params.toString();
+  return search ? `${url}?${search}` : url;
 }
 
 async function toApiError(response: Response): Promise<ApiError> {
